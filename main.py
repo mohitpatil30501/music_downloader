@@ -1,2 +1,6 @@
+from modules.hindi import Hindi
+
+
 if __name__ == '__main__':
-    print('Mohit')
+    user = Hindi()
+    user.fetch_album_list()
