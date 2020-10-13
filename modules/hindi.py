@@ -5,13 +5,12 @@ from bs4 import BeautifulSoup
 
 class Hindi:
     def __init__(self):
-        self.month = int(input("Enter Month: "))
         self.year = int(input("Enter Year: "))
         self.album_list = []
 
     def fetch_album_list(self):
         try:
-            request = requests.get("https://jatt.net")
+            request = requests.get("https://pagalsong.in")
             baseurl = request.url
             if request is None:
                 print("No Data found....Try again...!")
@@ -21,7 +20,7 @@ class Hindi:
             exit(0)
 
         try:
-            request_url = str(baseurl) + "/month.php?c=Hindi&m=" + str(self.month) + "&y=" + str(self.year)
+            request_url = str(baseurl) + "/bollywood-mp3-songs-" + str(self.year) + "-subcategory.html"
             request = requests.get(request_url)
             if request is None:
                 print("No Data found....Try again...!")
@@ -32,20 +31,19 @@ class Hindi:
 
         content = request.content
         soup = BeautifulSoup(content, "html.parser")
-        for single_element in soup.find_all("a", {"class": "touch"}):
-            removes = single_element.find("font", {"color": "#339900"})
-
-            list_song = Hindi.find_song(baseurl + single_element["href"])
+        for element in soup.find_all("div", {"class": "tnned alt-bg-gray"}):
+            headling_tag = element.find("h3")
+            album = headling_tag.find("a")
+            list_song = Hindi.find_song(album["href"])
             if list_song is None:
                 print("Not Downloadable file Founded...!")
                 continue
 
             self.album_list.append({
-                "Album_name": (single_element.text.strip().replace("»", "").replace(removes.text.strip(), "")).strip(),
-                "Link": baseurl + single_element["href"],
+                "Album_name": album.text.strip(),
+                "Link": album["href"],
                 "Songs": list_song
             })
-
         self.download()
 
     @staticmethod
@@ -62,13 +60,13 @@ class Hindi:
         content = request.content
         soup = BeautifulSoup(content, "html.parser")
         list_song = []
-        for song in soup.find_all("a", {"class": "touch"}):
-            if song.text.strip() != "Play All":
-                data = {
-                    "Song_name": song.text.strip(),
-                    "Link": Hindi.find_song_link(song["href"])
-                }
-                list_song.append(data)
+        for song in soup.find_all("div", {"class": "cat-list"}):
+            song = song.find("a")
+            data = {
+                "Song_name": song.text.strip(),
+                "Link": Hindi.find_song_link(song["href"])
+            }
+            list_song.append(data)
         return list_song
 
     @staticmethod
@@ -84,20 +82,27 @@ class Hindi:
 
         content = request.content
         soup = BeautifulSoup(content, "html.parser")
-        song_link = None
-        for song in soup.find_all("a", {"class": "touch"}):
-            removes = song.find("font", {"color": "#339900;"})
+        song_link = []
+        for song in soup.find_all("div", {"class": "downloaddiv"}):
+            song = song.find("a", {"class": "dbutton"})
 
-            if removes is not None:
-                data = song.text.strip().replace(removes.text.strip(), "").strip()
-
-                if data == "Download in 320 kbps":
-                    song_link = song["href"]
-                elif data == "Download in 128 kbps":
-                    song_link = song["href"]
-                elif data == "Download in 48 kbps":
-                    song_link = song["href"]
-        return song_link
+            if song is not None:
+                span_no = 0
+                for data in song.find_all("span"):
+                    span_no += 1
+                    if span_no == 2:
+                        song_link.append({
+                            "name": data.text.strip(),
+                            "value": int(data.text.strip().replace("Download", "").replace("KBPS mp3", "").strip()),
+                            "link": song["href"]
+                        })
+        value = 0
+        for single in song_link:
+            if value < single["value"]:
+                value = single["value"]
+        for single in song_link:
+            if value == single["value"]:
+                return single["link"]
 
     def download(self):
         print("Downloading...")
